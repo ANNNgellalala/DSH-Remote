@@ -42,9 +42,9 @@ Copy-Item config/dshremote.settings.example.json config/dshremote.settings.json
 # 全链路（relay smoke → 64 单测 → Smoke → APK 构建/安装 → 启动截图）
 pwsh -File scripts/e2e.ps1 -Serial <真机或模拟器 serial>
 
-# Release 签名 APK（v1.0.1）
-$pass = Get-Content app/keys/local-password.txt
-pwsh -File scripts/build-release-apk.ps1 -StorePass $pass -DisplayVersion 1.0.1 -VersionCode 11
+# Release 签名 APK（v1.0.1）；签名密钥/密码不在仓库里，见 config/README.md
+$env:DSHREMOTE_KEYSTORE_PASS = '<keystore password>'
+pwsh -File scripts/build-release-apk.ps1 -StorePass $env:DSHREMOTE_KEYSTORE_PASS -DisplayVersion 1.0.1 -VersionCode 11
 # 产物：dist/apk/dshremote-1.0.1-11-arm64-release.apk（33.78 MB，apksigner verify 通过）
 ```
 
