@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M6: the system camera app writes the QR capture into our cache dir through this FileProvider.
+     Only the cache root is shared (no external storage paths). -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+  <cache-path name="qr_cache" path="." />
+</paths>

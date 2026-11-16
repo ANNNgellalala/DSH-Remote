@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome status-bar silhouette used by the foreground-service and event notifications.
+     Notification small icons must be alpha-only shapes, so this is a white glyph on transparent. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <path
+      android:fillColor="#FFFFFFFF"
+      android:pathData="M4,3h16a2,2 0,0 1,2 2v10a2,2 0,0 1,-2 2h-9l-5,4v-4h-2a2,2 0,0 1,-2 -2v-10a2,2 0,0 1,2 -2zM6.5,8.5l2,2 -2,2M10,12.5h5" />
+</vector>

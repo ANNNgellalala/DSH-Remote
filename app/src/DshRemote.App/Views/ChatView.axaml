@@ -1,0 +1,1108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:acc="using:Arc.Avalonia.Controls"
+             xmlns:act="using:Arc.Avalonia.Actions.Controls"
+             xmlns:controls="using:DshRemote.App.Controls"
+             xmlns:vm="using:DshRemote.App.ViewModels"
+             xmlns:input="using:Avalonia.Input.TextInput"
+             x:Class="DshRemote.App.Views.ChatView">
+
+  <UserControl.Resources>
+    <!-- One image block: thumbnail button (opens the viewer), caption, inline error/loading state. -->
+    <DataTemplate x:Key="ImagePartTemplate">
+      <StackPanel Spacing="3" Margin="0,0,8,6">
+        <Button Command="{Binding OpenCommand}"
+                IsEnabled="{Binding CanOpen}"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                Cursor="Hand">
+          <Border CornerRadius="12"
+                  ClipToBounds="True"
+                  Background="{DynamicResource ArcSurfaceMuted}"
+                  Width="168"
+                  Height="124">
+            <Panel>
+              <TextBlock Text="图片"
+                         Classes="arc-caption"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding !HasBitmap}" />
+              <Image Source="{Binding Bitmap}" Stretch="UniformToFill" />
+              <TextBlock Text="加载中…"
+                         Classes="arc-caption"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding IsLoading}" />
+            </Panel>
+          </Border>
+        </Button>
+        <TextBlock Text="{Binding Caption}"
+                   Classes="arc-caption"
+                   MaxWidth="168"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{Binding ErrorText}"
+                   Classes="arc-caption danger"
+                   MaxWidth="168"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding HasError}" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Grid x:Name="ChatRoot" RowDefinitions="Auto,Auto,*,Auto" Background="{DynamicResource ArcBackground}">
+
+    <!-- Session header: back / session-actions menu / model + reasoning effort.
+         Running state is obvious from the transcript, so it has no badge; the long screenshot moved
+         into the session title's dropdown, and the workspace directory line is gone. -->
+    <Border Grid.Row="0" Classes="header-bar">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+        <acc:ArcButton Content="‹"
+                       Command="{Binding BackCommand}"
+                       Variant="Ghost"
+                       Size="Sm"
+                       Compact="True"
+                       VerticalAlignment="Center" />
+        <!-- Session title: a plain click opens the session actions menu (long screenshot). -->
+        <act:ArcContextMenu Grid.Column="1"
+                            x:Name="SessionMenu"
+                            Classes="session-menu"
+                            Label="会话操作"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalAlignment="Center">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <TextBlock Text="{Binding Title}"
+                       Classes="arc-label"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Text="▾"
+                       Classes="arc-caption"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </act:ArcContextMenu>
+        <!-- Model + reasoning effort: tap to cascade provider → model → effort. Disabled while running. -->
+        <Border Grid.Column="2"
+                x:Name="ModelChipBorder"
+                Classes="model-chip"
+                IsEnabled="{Binding CanOpenModelPicker}"
+                PointerPressed="OnModelChipPressed"
+                VerticalAlignment="Center"
+                ToolTip.Tip="{Binding ModelChipHint}">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="3">
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding ModelChipModelName}"
+                         Classes="model-chip-title"
+                         TextTrimming="CharacterEllipsis"
+                         MaxWidth="132" />
+              <TextBlock Text="{Binding ModelChipEffortName}"
+                         Classes="model-chip-sub"
+                         IsVisible="{Binding HasModelChipEffort}"
+                         TextTrimming="CharacterEllipsis"
+                         MaxWidth="132" />
+            </StackPanel>
+            <TextBlock Grid.Column="1"
+                       Text="▾"
+                       Classes="arc-caption"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- Model picker overlay lives at the end of this grid (see "Cascading model picker" comment):
+         it is an in-page layer instead of an Avalonia Popup because a Popup whose content is swapped
+         between cascade levels can wedge its own window on some Android OEM builds and then swallow
+         the composer taps (the whole page looks frozen). -->
+
+    <!-- Follow status / notice / errors / queue -->
+    <StackPanel Grid.Row="1" Margin="14,8,14,0" Spacing="6">
+
+      <Border Classes="notice-bar" IsVisible="{Binding Hub.HasNotice}">
+        <TextBlock Text="{Binding Hub.Notice}" Classes="arc-caption" TextWrapping="Wrap" />
+      </Border>
+
+      <Grid IsVisible="{Binding HasFollowStatus}">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <acc:ArcSpinner Size="12" StrokeWidth="2" Stroke="{DynamicResource ArcWarning}" />
+          <TextBlock Text="{Binding FollowStatusText}" Classes="arc-caption" VerticalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+
+      <Border Classes="error-banner" IsVisible="{Binding HasError}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBlock Text="{Binding ErrorMessage}" Classes="arc-caption" TextWrapping="Wrap" />
+          <acc:ArcButton Grid.Column="1"
+                         Content="重新连接"
+                         Variant="Secondary"
+                         Size="Sm"
+                         Command="{Binding ReconnectCommand}"
+                         VerticalAlignment="Top" />
+        </Grid>
+      </Border>
+
+      <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" IsVisible="{Binding ShowSessionStatusRow}">
+        <TextBlock Text="{Binding StatusText}" Classes="arc-caption" VerticalAlignment="Center" />
+        <Button Grid.Column="1"
+                Classes="pill"
+                Command="{Binding ToggleQueueCommand}"
+                IsVisible="{Binding HasQueue}"
+                Content="{Binding QueueHeaderText}" />
+        <TextBlock Grid.Column="2"
+                   Text="{Binding PendingInputText}"
+                   Classes="arc-caption"
+                   IsVisible="{Binding HasPendingInput}"
+                   VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2"
+                   Text="{Binding FirstPageText}"
+                   Classes="arc-caption"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding HasFirstPageText}" />
+      </Grid>
+
+      <Border Classes="queue-panel" IsVisible="{Binding IsQueueExpanded}">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding QueueHeaderText}" Classes="arc-label" />
+          <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Queue}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="queue-item">
+                    <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                      <TextBlock Text="{Binding Text}"
+                                 Classes="arc-body-sm"
+                                 TextWrapping="Wrap"
+                                 IsVisible="{Binding IsReadOnly}" />
+                      <TextBox Text="{Binding Text, Mode=TwoWay}"
+                               IsVisible="{Binding IsEditing}"
+                               AcceptsReturn="True"
+                               input:TextInputOptions.Multiline="True"
+                               TextWrapping="Wrap"
+                               MinHeight="38" />
+                      <WrapPanel Grid.Row="1" Orientation="Horizontal" ItemSpacing="6" LineSpacing="6">
+                        <acc:ArcButton Content="编辑"
+                                       Variant="Ghost"
+                                       Size="Sm"
+                                       Command="{Binding EditCommand}"
+                                       IsVisible="{Binding IsReadOnly}" />
+                        <acc:ArcButton Content="保存"
+                                       Variant="Primary"
+                                       Size="Sm"
+                                       Command="{Binding SaveCommand}"
+                                       IsVisible="{Binding IsEditing}" />
+                        <acc:ArcButton Content="取消"
+                                       Variant="Ghost"
+                                       Size="Sm"
+                                       Command="{Binding CancelEditCommand}"
+                                       IsVisible="{Binding IsEditing}" />
+                        <acc:ArcButton Content="删除"
+                                       Variant="Ghost"
+                                       Size="Sm"
+                                       Command="{Binding RemoveCommand}" />
+                        <acc:ArcButton Content="插队"
+                                       Variant="Secondary"
+                                       Size="Sm"
+                                       Command="{Binding SteerNowCommand}" />
+                      </WrapPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+
+    <!-- Transcript -->
+    <ScrollViewer Grid.Row="2"
+                  x:Name="MessagesScroll"
+                  VerticalScrollBarVisibility="Auto"
+                  ScrollChanged="OnMessagesScrollChanged"
+                  Padding="14,10,14,6">
+      <StackPanel Spacing="8">
+        <acc:ArcButton Content="加载更早的历史"
+                       Variant="Ghost"
+                       Size="Sm"
+                       HorizontalAlignment="Center"
+                       Click="OnLoadOlderClick"
+                       IsVisible="{Binding HasOlder}" />
+
+        <StackPanel Orientation="Horizontal"
+                    Spacing="6"
+                    HorizontalAlignment="Center"
+                    IsVisible="{Binding IsLoadingOlder}">
+          <acc:ArcSpinner Size="12" StrokeWidth="2" Stroke="{DynamicResource ArcAccent}" />
+          <TextBlock Text="加载更早的历史…" Classes="arc-caption" />
+        </StackPanel>
+
+        <TextBlock Text="· 已到会话开头 ·"
+                   Classes="arc-caption"
+                   HorizontalAlignment="Center"
+                   IsVisible="{Binding ShowBeginning}" />
+
+        <StackPanel IsVisible="{Binding IsOpening}" Spacing="8" Margin="0,40,0,0">
+          <acc:ArcSpinner Size="22" StrokeWidth="2" Stroke="{DynamicResource ArcAccent}" HorizontalAlignment="Center" />
+          <TextBlock Text="正在打开会话…" Classes="arc-caption" HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <StackPanel IsVisible="{Binding ShowEmptyMessages}" Spacing="6" Margin="0,40,0,0">
+          <TextBlock Text="还没有消息" Classes="arc-body" HorizontalAlignment="Center" />
+          <TextBlock Text="在下方输入框发一条消息，Agent 的输出会实时出现在这里。"
+                     Classes="arc-caption"
+                     TextWrapping="Wrap"
+                     TextAlignment="Center"
+                     MaxWidth="320"
+                     HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <ItemsControl ItemsSource="{Binding Timeline}">
+          <ItemsControl.DataTemplates>
+            <DataTemplate DataType="vm:ChatMessageViewModel">
+              <Grid Margin="0,0,0,10" HorizontalAlignment="{Binding Alignment}">
+                <Border Classes="bubble"
+                        Classes.user="{Binding IsUser}"
+                        Classes.assistant="{Binding IsAssistant}"
+                        Classes.tool="{Binding IsTool}"
+                        Classes.system="{Binding IsSystem}"
+                        Classes.compaction-holder="{Binding IsCompaction}"
+                        Classes.error="{Binding IsError}">
+                  <StackPanel Spacing="4">
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding ShowHeaderRow}">
+                      <TextBlock Text="{Binding Header}" Classes="arc-caption" />
+                      <TextBlock Grid.Column="1" Text="{Binding TimeText}" Classes="arc-caption" />
+                    </Grid>
+
+                    <!-- Context compaction card: the checkpoint replacement user message is never rendered as
+                         a prompt; its seq anchors this card and the summary comes from compaction/summary. -->
+                    <Border Classes="compaction" IsVisible="{Binding IsCompaction}">
+                      <StackPanel Spacing="6">
+                        <Button Classes="compaction-header" Command="{Binding ToggleCompactionCommand}">
+                          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="{Binding CompactionChevron}" Classes="arc-caption" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding CompactionMetaText}"
+                                       Classes="arc-body-sm"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding TimeText}"
+                                       Classes="arc-caption"
+                                       VerticalAlignment="Center" />
+                          </Grid>
+                        </Button>
+                        <Border Classes="compaction-body" IsVisible="{Binding IsCompactionExpanded}">
+                          <StackPanel Spacing="6">
+                            <controls:MarkdownBodyView Text="{Binding CompactionSummary}"
+                                                       UseMarkdown="True"
+                                                       IsVisible="{Binding HasCompactionSummary}" />
+                            <TextBlock Text="{Binding CompactionHintText}"
+                                       Classes="arc-caption"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasCompactionHint}" />
+                          </StackPanel>
+                        </Border>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- Reasoning / thinking block (collapsible) -->
+                    <Border Classes="reasoning" IsVisible="{Binding HasReasoning}">
+                      <StackPanel Spacing="4">
+                        <Button Classes="reasoning-header" Command="{Binding ToggleReasoningCommand}">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding ReasoningHeader}" Classes="arc-caption" />
+                            <TextBlock Grid.Column="1" Text="{Binding ReasoningChevron}" Classes="arc-caption" />
+                          </Grid>
+                        </Button>
+                        <SelectableTextBlock Text="{Binding ReasoningPreview}"
+                                             Classes="arc-caption"
+                                             TextWrapping="Wrap"
+                                             IsVisible="{Binding !IsReasoningExpanded}" />
+                        <SelectableTextBlock Text="{Binding ReasoningText}"
+                                             Classes="arc-mono"
+                                             TextWrapping="Wrap"
+                                             IsVisible="{Binding IsReasoningExpanded}" />
+                      </StackPanel>
+                    </Border>
+
+                    <!-- Assistant / user / system body -->
+                    <controls:MarkdownBodyView Text="{Binding Text}"
+                                               IsStreaming="{Binding IsStreaming}"
+                                               UseMarkdown="{Binding IsMarkdown}"
+                                               Muted="{Binding IsSystem}"
+                                               IsVisible="{Binding HasText}" />
+
+                    <!-- Message-level images (user prompts, assistant attachments) -->
+                    <ItemsControl ItemsSource="{Binding Images}"
+                                  ItemTemplate="{DynamicResource ImagePartTemplate}"
+                                  IsVisible="{Binding ShowImagesOutsideTool}"
+                                  Margin="0,6,0,0">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <!-- Tool card: arguments (collapsed by default) -->
+                    <StackPanel Spacing="2" IsVisible="{Binding IsTool}">
+                      <Button Classes="tool-toggle"
+                              Command="{Binding ToggleArgumentsCommand}"
+                              IsVisible="{Binding HasArguments}">
+                        <TextBlock Text="{Binding ArgumentsToggleText}" Classes="arc-caption" />
+                      </Button>
+                      <Border Classes="tool-section" IsVisible="{Binding IsArgumentsExpanded}">
+                        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                          <SelectableTextBlock Text="{Binding ArgumentsJson}"
+                                               Classes="arc-mono"
+                                               TextWrapping="Wrap" />
+                        </ScrollViewer>
+                      </Border>
+
+                      <Border Classes="tool-section" Classes.tool-error="{Binding IsError}" IsVisible="{Binding HasResult}">
+                        <StackPanel Spacing="4">
+                          <SelectableTextBlock Text="{Binding ResultPreview}"
+                                               Classes="arc-mono"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding !IsResultExpanded}" />
+                          <SelectableTextBlock Text="{Binding ResultText}"
+                                               Classes="arc-mono"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding IsResultExpanded}" />
+                          <Button Classes="tool-toggle"
+                                  Command="{Binding ToggleResultCommand}"
+                                  IsVisible="{Binding HasLongResult}">
+                            <TextBlock Text="{Binding ResultToggleText}" Classes="arc-caption" />
+                          </Button>
+                        </StackPanel>
+                      </Border>
+
+                      <!-- Images carried by the tool result (e.g. screenshots from read_image) -->
+                      <ItemsControl ItemsSource="{Binding Images}"
+                                    ItemTemplate="{DynamicResource ImagePartTemplate}"
+                                    IsVisible="{Binding HasImages}"
+                                    Margin="0,6,0,0">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                      </ItemsControl>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding ShowFooter}">
+                      <TextBlock Text="{Binding StatusText}" Classes="arc-caption" IsVisible="{Binding HasStatus}" />
+                      <TextBlock Grid.Column="2"
+                                 Text="{Binding DurationText}"
+                                 Classes="arc-caption"
+                                 IsVisible="{Binding HasDuration}" />
+                      <acc:ArcButton Grid.Column="3"
+                                     Content="{Binding CopyLabel}"
+                                     Variant="Ghost"
+                                     Size="Sm"
+                                     Compact="True"
+                                     Click="OnCopyMessageClick"
+                                     IsVisible="{Binding HasCopyableText}" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </DataTemplate>
+
+            <!-- One agent turn: folded reasoning + tool calls, then only the final answer below -->
+            <DataTemplate DataType="vm:ChatTurnViewModel">
+              <StackPanel Spacing="6" Margin="0,0,0,10">
+                <Border Classes="reasoning" IsVisible="{Binding ShowHeader}">
+                  <StackPanel Spacing="4">
+                    <Button Classes="reasoning-header" Command="{Binding ToggleCommand}">
+                      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <TextBlock Text="{Binding Chevron}" Classes="arc-caption" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding TitleText}"
+                                   Classes="arc-caption"
+                                   VerticalAlignment="Center" />
+                        <acc:ArcSpinner Grid.Column="2"
+                                        Size="12"
+                                        StrokeWidth="2"
+                                        Stroke="{DynamicResource ArcAccent}"
+                                        IsVisible="{Binding IsRunning}" />
+                      </Grid>
+                    </Button>
+                    <StackPanel Spacing="6" IsVisible="{Binding IsExpanded}">
+                      <SelectableTextBlock Text="{Binding ReasoningText}"
+                                           Classes="arc-caption"
+                                           TextWrapping="Wrap"
+                                           MaxHeight="280"
+                                           IsVisible="{Binding HasReasoning}" />
+                      <ItemsControl ItemsSource="{Binding Process}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Final}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid Margin="0,0,0,2" HorizontalAlignment="{Binding Alignment}">
+                        <Border Classes="bubble"
+                                Classes.assistant="{Binding IsAssistant}"
+                                Classes.error="{Binding IsError}">
+                          <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasHeader}">
+                              <TextBlock Text="{Binding Header}" Classes="arc-caption" />
+                              <TextBlock Grid.Column="1" Text="{Binding TimeText}" Classes="arc-caption" />
+                            </Grid>
+                            <controls:MarkdownBodyView Text="{Binding Text}"
+                                                       IsStreaming="{Binding IsStreaming}"
+                                                       UseMarkdown="{Binding IsMarkdown}"
+                                                       Muted="{Binding IsSystem}"
+                                                       IsVisible="{Binding HasText}" />
+                            <ItemsControl ItemsSource="{Binding Images}"
+                                          ItemTemplate="{DynamicResource ImagePartTemplate}"
+                                          IsVisible="{Binding ShowImagesOutsideTool}"
+                                          Margin="0,6,0,0">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                  <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" />
+                                </ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding ShowFooter}">
+                              <TextBlock Text="{Binding StatusText}" Classes="arc-caption" IsVisible="{Binding HasStatus}" />
+                              <TextBlock Grid.Column="2"
+                                         Text="{Binding DurationText}"
+                                         Classes="arc-caption"
+                                         IsVisible="{Binding HasDuration}" />
+                              <acc:ArcButton Grid.Column="3"
+                                             Content="{Binding CopyLabel}"
+                                             Variant="Ghost"
+                                             Size="Sm"
+                                             Compact="True"
+                                             Click="OnCopyMessageClick"
+                                             IsVisible="{Binding HasCopyableText}" />
+                            </Grid>
+                          </StackPanel>
+                        </Border>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Files this turn produced (present) or modified (edit/write/apply_patch): display-only,
+                     the phone build cannot open the desktop file remotely yet. -->
+                <Border Classes="file-card" IsVisible="{Binding HasFiles}">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBlock Text="本轮文件" Classes="arc-label" />
+                      <TextBlock Grid.Column="1"
+                                 Text="{Binding FileOverflowText}"
+                                 Classes="arc-caption"
+                                 VerticalAlignment="Center"
+                                 IsVisible="{Binding HasFileOverflow}" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Files}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Classes="file-row">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                              <Border Classes="file-badge" Classes.produced="{Binding IsProduced}">
+                                <TextBlock Text="{Binding KindText}" Classes="arc-caption" />
+                              </Border>
+                              <StackPanel Grid.Column="1" Spacing="1">
+                                <TextBlock Text="{Binding DisplayName}"
+                                           Classes="arc-body-sm"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding DirectoryText}"
+                                           Classes="arc-caption"
+                                           TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding HasDirectory}" />
+                                <TextBlock Text="{Binding Description}"
+                                           Classes="arc-caption"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding HasDescription}" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="2"
+                                         Text="{Binding CountsText}"
+                                         Classes="arc-caption"
+                                         VerticalAlignment="Center"
+                                         IsVisible="{Binding HasCounts}" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.DataTemplates>
+        </ItemsControl>
+
+        <TextBlock Text="{Binding HiddenEventsText}"
+                   Classes="arc-caption"
+                   TextWrapping="Wrap"
+                   Margin="0,4,0,0"
+                   IsVisible="{Binding HasHiddenEvents}" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Text selection: Avalonia's SelectableTextBlock has no touch copy affordance (no long-press menu,
+         no keyboard on the phone), so a selection in any transcript text block raises this small bar.
+         It floats over the transcript and is not part of the captured long-screenshot content. -->
+    <Border x:Name="SelectionCopyBar"
+            Grid.Row="2"
+            IsVisible="False"
+            ZIndex="10"
+            VerticalAlignment="Bottom"
+            HorizontalAlignment="Right"
+            Margin="0,0,12,8"
+            MaxWidth="330"
+            Background="{DynamicResource ArcSurface}"
+            BorderBrush="{DynamicResource ArcBorderSubtle}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="10,6">
+      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <TextBlock x:Name="SelectionCopyText"
+                   Classes="arc-caption"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   MaxWidth="150" />
+        <acc:ArcButton Content="复制"
+                       Variant="Primary"
+                       Size="Sm"
+                       Compact="True"
+                       Click="OnCopySelectionClick" />
+        <acc:ArcButton Content="取消"
+                       Variant="Ghost"
+                       Size="Sm"
+                       Compact="True"
+                       Click="OnDismissSelectionClick" />
+      </StackPanel>
+    </Border>
+
+    <!-- Bottom dock: approvals, questions, composer -->
+    <Border Grid.Row="3"
+            Background="{DynamicResource ArcSurface}"
+            BorderBrush="{DynamicResource ArcBorderSubtle}"
+            BorderThickness="0,1,0,0"
+            Padding="10,8">
+      <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+
+        <ScrollViewer Grid.Row="0" MaxHeight="320" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="0">
+
+            <!-- Context compaction in progress: the transcript stays unchanged (replacements are model-side) -->
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="0,0,0,6"
+                        IsVisible="{Binding IsCompacting}">
+              <acc:ArcSpinner Size="12"
+                              StrokeWidth="2"
+                              Stroke="{DynamicResource ArcAccent}"
+                              VerticalAlignment="Center" />
+              <TextBlock Text="正在压缩上下文…"
+                         Classes="arc-caption"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Approval tray -->
+            <ContentControl Content="{Binding Hub.ActiveApproval}"
+                            IsVisible="{Binding Hub.HasActiveApproval}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate>
+                  <Border Classes="approval-card">
+                    <StackPanel Spacing="6">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <acc:ArcBadge Content="需要审批" Tone="Warning" Dot="True" />
+                          <acc:ArcBadge Content="{Binding ToolName}" Tone="Neutral" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding CountdownText}"
+                                   Classes="arc-caption"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                      <TextBlock Text="{Binding ReasonText}" Classes="arc-body-sm" TextWrapping="Wrap" />
+                      <Border Classes="approval-args" IsVisible="{Binding HasArguments}">
+                        <SelectableTextBlock Text="{Binding ArgumentsJson}"
+                                             Classes="arc-mono"
+                                             TextWrapping="Wrap" />
+                      </Border>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <acc:ArcButton Content="允许一次"
+                                       Variant="Primary"
+                                       Size="Sm"
+                                       Command="{Binding AllowCommand}"
+                                       IsVisible="{Binding ShowButtons}" />
+                        <acc:ArcButton Content="拒绝"
+                                       Variant="Danger"
+                                       Size="Sm"
+                                       Command="{Binding DenyCommand}"
+                                       IsVisible="{Binding ShowButtons}" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding StatusText}" Classes="arc-caption" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+
+            <!-- Question card -->
+            <ContentControl Content="{Binding Hub.ActiveQuestion}"
+                            IsVisible="{Binding Hub.HasActiveQuestion}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate>
+                  <Border Classes="question-card">
+                    <StackPanel Spacing="8">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <acc:ArcBadge Content="需要你的回答" Tone="Accent" Dot="True" />
+                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="arc-caption" />
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Classes="question-item">
+                              <StackPanel Spacing="6">
+                                <TextBlock Text="{Binding Header}"
+                                           Classes="arc-caption"
+                                           IsVisible="{Binding HasHeader}" />
+                                <TextBlock Text="{Binding Text}" Classes="arc-body-sm" TextWrapping="Wrap" />
+                                <ItemsControl ItemsSource="{Binding Options}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                      <!-- No GroupName: each question owns its selection set; the view-model
+                                           enforces single-select per question (radio groups would leak across
+                                           multiple questions in one batch). -->
+                                      <RadioButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                   Content="{Binding Label}"
+                                                   Margin="0,1" />
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBox Text="{Binding FreeText, Mode=TwoWay}"
+                                         PlaceholderText="补充说明（可选）"
+                                         TextWrapping="Wrap"
+                                         MinHeight="36" />
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <acc:ArcButton Content="提交回答"
+                                       Variant="Primary"
+                                       Size="Sm"
+                                       Command="{Binding SubmitCommand}"
+                                       IsEnabled="{Binding ShowButtons}" />
+                        <acc:ArcButton Content="关闭提问"
+                                       Variant="Ghost"
+                                       Size="Sm"
+                                       Command="{Binding CancelCommand}"
+                                       IsEnabled="{Binding ShowButtons}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+          <!-- Per-send mode only: the global preferences (桌面端自动审批 / 输入时展开全屏) live on the
+               设置 page now. The strip only shows while a turn is running (steer needs a live turn). -->
+          <StackPanel Grid.Row="0"
+                      Orientation="Horizontal"
+                      Spacing="8"
+                      IsVisible="{Binding IsRunning}">
+            <CheckBox Content="插话模式（发送 steer，而非排队）"
+                      IsChecked="{Binding IsSteerMode, Mode=TwoWay}"
+                      FontSize="{DynamicResource ArcTextSm}" />
+            <TextBlock Text="发送后直接插入当前运行"
+                       Classes="arc-caption"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+
+          <!-- Picked images waiting to be sent -->
+          <ItemsControl Grid.Row="1"
+                        ItemsSource="{Binding PendingImages}"
+                        IsVisible="{Binding HasPendingImages}"
+                        Margin="0,0,0,2">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{DynamicResource ArcSurfaceMuted}"
+                        BorderBrush="{DynamicResource ArcBorderSubtle}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border CornerRadius="8" ClipToBounds="True" Width="56" Height="42">
+                      <Panel>
+                        <TextBlock Text="图片" Classes="arc-caption" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasPreview}" />
+                        <Image Source="{Binding Preview}" Stretch="UniformToFill" />
+                      </Panel>
+                    </Border>
+                    <acc:ArcButton Content="移除"
+                                   Variant="Ghost"
+                                   Size="Sm"
+                                   Command="{Binding RemoveCommand}"
+                                   VerticalAlignment="Center" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+            <acc:ArcButton Grid.Column="0"
+                           Content="附图"
+                           Variant="Secondary"
+                           Size="Sm"
+                           Command="{Binding PickImageCommand}"
+                           IsEnabled="{Binding CanAttachImage}"
+                           VerticalAlignment="Bottom" />
+            <TextBox Grid.Column="1"
+                     x:Name="PromptBox"
+                     Text="{Binding Draft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     AcceptsReturn="True"
+                     input:TextInputOptions.Multiline="True"
+                     TextWrapping="Wrap"
+                     MinHeight="36"
+                     MaxHeight="120"
+                     Padding="10,0"
+                     IsEnabled="{Binding CanEditSession}"
+                     VerticalContentAlignment="Center" />
+            <acc:ArcButton Grid.Column="2"
+                           Content="{Binding SendButtonText}"
+                           Variant="Primary"
+                           Size="Sm"
+                           Command="{Binding SendCommand}"
+                           IsEnabled="{Binding CanSend}"
+                           VerticalAlignment="Bottom" />
+            <acc:ArcButton Grid.Column="3"
+                           Content="停止"
+                           Variant="Danger"
+                           Size="Sm"
+                           Command="{Binding StopCommand}"
+                           IsEnabled="{Binding CanStop}"
+                           VerticalAlignment="Bottom" />
+          </Grid>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- Cascading model picker: level 0 = every provider, level 1 = that provider's models,
+         level 2 = the model's reasoning efforts. Rendered as an in-page overlay (not a Popup):
+         the card is anchored top-right under the header chip and the dimmed backdrop closes it. -->
+    <Grid Grid.RowSpan="4"
+          IsVisible="{Binding IsModelPickerOpen}"
+          ZIndex="30">
+      <Border Background="#66000000" PointerPressed="OnModelPickerBackdropPressed" />
+      <Border Classes="model-menu"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Margin="0,72,10,0"
+              MaxHeight="470">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="4">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+            <acc:ArcButton Content="‹"
+                           Command="{Binding ModelPickerBackCommand}"
+                           IsVisible="{Binding CanGoBackModelPicker}"
+                           Variant="Ghost"
+                           Size="Sm"
+                           Compact="True" />
+            <TextBlock Grid.Column="1"
+                       Text="{Binding ModelPickerTitle}"
+                       Classes="arc-label"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+            <acc:ArcButton Grid.Column="2"
+                           Content="关闭"
+                           Command="{Binding CloseModelPickerCommand}"
+                           Variant="Ghost"
+                           Size="Sm"
+                           Compact="True" />
+          </Grid>
+
+          <StackPanel Grid.Row="1" Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsModelCatalogLoading}">
+              <acc:ArcSpinner Size="12" StrokeWidth="2" />
+              <TextBlock Text="正在加载模型目录…" Classes="arc-caption" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Spacing="6" IsVisible="{Binding HasModelCatalogError}">
+              <TextBlock Text="{Binding ModelCatalogError}"
+                         Classes="arc-caption danger"
+                         TextWrapping="Wrap" />
+              <acc:ArcButton Content="重新加载"
+                             Command="{Binding RefreshModelCatalogCommand}"
+                             Variant="Secondary"
+                             Size="Sm" />
+            </StackPanel>
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="2" MaxHeight="380" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="2">
+              <!-- Level 0: providers -->
+              <ItemsControl ItemsSource="{Binding ModelProviders}" IsVisible="{Binding IsModelProviderLevel}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button Classes="model-row" Command="{Binding SelectCommand}">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="1">
+                          <TextBlock Text="{Binding Name}"
+                                     Classes="arc-body-sm"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Detail}"
+                                     Classes="arc-caption"
+                                     IsVisible="{Binding HasDetail}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="›"
+                                   Classes="arc-caption"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Level 1: models of the chosen provider -->
+              <ItemsControl ItemsSource="{Binding ModelModels}" IsVisible="{Binding IsModelLevel}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button Classes="model-row" Command="{Binding SelectCommand}">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="1">
+                          <TextBlock Text="{Binding Name}"
+                                     Classes="arc-body-sm"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Detail}"
+                                     Classes="arc-caption"
+                                     IsVisible="{Binding HasDetail}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center">
+                          <TextBlock Text="✓"
+                                     Classes="model-check"
+                                     IsVisible="{Binding IsSelected}" />
+                          <TextBlock Text="›"
+                                     Classes="arc-caption"
+                                     IsVisible="{Binding IsDrillable}" />
+                        </StackPanel>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Level 2: reasoning efforts of the chosen model -->
+              <ItemsControl ItemsSource="{Binding ModelEfforts}" IsVisible="{Binding IsModelEffortLevel}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button Classes="model-row" Command="{Binding SelectCommand}">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="1">
+                          <TextBlock Text="{Binding Name}" Classes="arc-body-sm" />
+                          <TextBlock Text="{Binding Detail}"
+                                     Classes="arc-caption"
+                                     IsVisible="{Binding HasDetail}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="✓"
+                                   Classes="model-check"
+                                   IsVisible="{Binding IsSelected}"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Provider-level catalog failures, kept as muted info rows. -->
+              <ItemsControl ItemsSource="{Binding ModelPickerWarnings}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding}"
+                               Classes="arc-caption"
+                               TextWrapping="Wrap"
+                               Margin="8,4" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Full-screen composer editor (global setting: 输入时展开全屏) -->
+    <Border Grid.RowSpan="4"
+            IsVisible="{Binding IsComposerExpanded}"
+            Background="#F20B0B10"
+            Padding="12,10">
+      <Border Classes="card" Padding="12">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="2">
+              <TextBlock Text="全屏输入" Classes="arc-label" />
+              <TextBlock Text="Esc/收起返回会话；发送后自动收起。"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+            <acc:ArcButton Grid.Column="1"
+                           Content="收起"
+                           Variant="Ghost"
+                           Size="Sm"
+                           Command="{Binding CollapseComposerCommand}"
+                           VerticalAlignment="Center" />
+          </Grid>
+
+          <TextBox Grid.Row="1"
+                   x:Name="FullscreenPromptBox"
+                   Text="{Binding Draft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                   AcceptsReturn="True"
+                   input:TextInputOptions.Multiline="True"
+                   TextWrapping="Wrap"
+                   MinHeight="0"
+                   VerticalContentAlignment="Top"
+                   VerticalAlignment="Stretch" />
+
+          <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <acc:ArcButton Grid.Column="0"
+                           Content="附图"
+                           Variant="Secondary"
+                           Size="Sm"
+                           Command="{Binding PickImageCommand}"
+                           IsEnabled="{Binding CanAttachImage}" />
+            <acc:ArcButton Grid.Column="2"
+                           Content="{Binding SendButtonText}"
+                           Variant="Primary"
+                           Size="Sm"
+                           Command="{Binding SendCommand}"
+                           IsEnabled="{Binding CanSend}" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Border>
+
+    <!-- Full-screen image viewer (tap anywhere to close) -->
+    <Border Grid.RowSpan="4"
+            IsVisible="{Binding HasSelectedImage}"
+            Background="#D9000000"
+            PointerPressed="OnImageViewerPressed">
+      <Grid RowDefinitions="Auto,*" Margin="14,10,14,14">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBlock Text="{Binding SelectedImage.Caption}"
+                     Classes="arc-body"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+          <acc:ArcButton Grid.Column="1"
+                         Content="关闭"
+                         Variant="Ghost"
+                         Size="Sm"
+                         Command="{Binding CloseImageCommand}" />
+        </Grid>
+        <Image Grid.Row="1"
+               Source="{Binding SelectedImage.Bitmap}"
+               Stretch="Uniform"
+               Margin="0,10,0,0" />
+      </Grid>
+    </Border>
+
+    <!-- Long screenshot: progress overlay (never part of the captured image — capture only reads the
+         transcript content) -->
+    <Border x:Name="LongShotProgressOverlay"
+            Grid.RowSpan="4"
+            IsVisible="False"
+            Background="#B3000000">
+      <Border Classes="card"
+              MaxWidth="330"
+              Padding="18"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <TextBlock Text="长截图" Classes="arc-label" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <acc:ArcSpinner Size="16"
+                            StrokeWidth="2"
+                            Stroke="{DynamicResource ArcAccent}"
+                            VerticalAlignment="Center" />
+            <TextBlock x:Name="LongShotProgressText"
+                       Text="正在准备长图…"
+                       Classes="arc-caption"
+                       TextWrapping="Wrap"
+                       MaxWidth="240"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+          <acc:ArcButton Content="取消"
+                         Variant="Ghost"
+                         Size="Sm"
+                         HorizontalAlignment="Right"
+                         Click="OnLongShotCancel" />
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <!-- Long screenshot: result banner (save location, page count, preview/share entries) -->
+    <Border x:Name="LongShotResultBanner"
+            Grid.RowSpan="4"
+            IsVisible="False"
+            VerticalAlignment="Bottom"
+            HorizontalAlignment="Stretch"
+            Margin="14,0,14,92"
+            Background="{DynamicResource ArcSurface}"
+            BorderBrush="{DynamicResource ArcBorderSubtle}"
+            BorderThickness="1"
+            CornerRadius="14"
+            Padding="12">
+      <StackPanel Spacing="8">
+        <TextBlock x:Name="LongShotResultText"
+                   Classes="arc-caption"
+                   TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <acc:ArcButton Content="查看"
+                         Variant="Secondary"
+                         Size="Sm"
+                         Click="OnLongShotView" />
+          <acc:ArcButton Content="分享"
+                         Variant="Primary"
+                         Size="Sm"
+                         Click="OnLongShotShare" />
+          <acc:ArcButton Content="关闭"
+                         Variant="Ghost"
+                         Size="Sm"
+                         Click="OnLongShotDismiss" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Copy feedback: message copy and selected-text copy share one transient toast. -->
+    <Border x:Name="CopyToast"
+            Grid.RowSpan="4"
+            IsVisible="False"
+            ZIndex="40"
+            VerticalAlignment="Bottom"
+            HorizontalAlignment="Center"
+            Margin="0,0,0,96"
+            Background="{DynamicResource ArcSurface}"
+            BorderBrush="{DynamicResource ArcBorderSubtle}"
+            BorderThickness="1"
+            CornerRadius="999"
+            Padding="12,7">
+      <TextBlock x:Name="CopyToastText" Text="已复制" Classes="arc-caption" />
+    </Border>
+  </Grid>
+</UserControl>

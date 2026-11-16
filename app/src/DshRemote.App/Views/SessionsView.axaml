@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:acc="using:Arc.Avalonia.Controls"
+             xmlns:media="using:Arc.Avalonia.Media.Controls"
+             x:Class="DshRemote.App.Views.SessionsView">
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <!-- Header: current workspace picker + connection actions. The connection state is already shown by
+         the slim status strip above, so the picker carries no connection dot of its own; the only dot here
+         is the per-workspace running marker in the picker items (also visible on the collapsed selection). -->
+    <Border Grid.Row="0" Classes="header-bar">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <ComboBox Classes="workspace-picker"
+                  ItemsSource="{Binding WorkspaceChoices}"
+                  SelectedItem="{Binding SelectedWorkspaceGroup, Mode=TwoWay}"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" RowSpacing="1">
+                <TextBlock Text="{Binding Title}"
+                           Classes="arc-heading"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding CountText}"
+                           Classes="arc-caption"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center" />
+                <!-- Workspace has at least one running session: a quiet status dot on the right edge,
+                     aligned with the count; it disappears for idle workspaces (no layout change then). -->
+                <Border Grid.Column="2"
+                        Classes="running-dot"
+                        IsVisible="{Binding HasRunningSessions}" />
+                <TextBlock Grid.Row="1"
+                           Grid.ColumnSpan="3"
+                           Text="{Binding PathText}"
+                           Classes="arc-caption"
+                           IsVisible="{Binding HasPath}"
+                           TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <acc:ArcButton Content="设置"
+                         Variant="Ghost"
+                         Size="Sm"
+                         Command="{Binding OpenSettingsCommand}" />
+          <acc:ArcButton Content="桌面"
+                         Variant="Ghost"
+                         Size="Sm"
+                         Command="{Binding OpenDesktopsCommand}" />
+          <acc:ArcButton Content="刷新"
+                         Variant="Ghost"
+                         Size="Sm"
+                         Command="{Binding RefreshSessionsCommand}" />
+          <acc:ArcButton Content="断开"
+                         Variant="Secondary"
+                         Size="Sm"
+                         Command="{Binding DisconnectCommand}"
+                         IsEnabled="{Binding CanDisconnect}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Summary / workspace toolbar / toast / errors -->
+    <StackPanel Grid.Row="1" Margin="16,10,16,6" Spacing="8">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding SessionsSummary}" Classes="arc-caption" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsListingSessions}">
+          <acc:ArcSpinner Size="13" StrokeWidth="2" Stroke="{DynamicResource ArcAccent}" />
+          <TextBlock Text="刷新中…" Classes="arc-caption" />
+        </StackPanel>
+      </Grid>
+
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBlock Text="{Binding SelectedWorkspacePath}"
+                   Classes="arc-caption"
+                   IsVisible="{Binding HasSelectedWorkspacePath}"
+                   TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+        <acc:ArcButton Grid.Column="1"
+                       Content="＋ 新建会话"
+                       Variant="Secondary"
+                       Size="Sm"
+                       Command="{Binding SelectedWorkspaceGroup.CreateSessionCommand}"
+                       CommandParameter="{Binding SelectedWorkspaceGroup}"
+                       IsVisible="{Binding SelectedWorkspaceGroup.CanCreateSession}" />
+      </Grid>
+
+      <Border Classes="notice-bar" IsVisible="{Binding HasToast}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ToastText}" Classes="arc-caption" VerticalAlignment="Center" />
+          <acc:ArcButton Grid.Column="1" Content="关闭" Variant="Ghost" Size="Sm" Command="{Binding ToastCommand}" />
+        </Grid>
+      </Border>
+
+      <Border Classes="error-banner" IsVisible="{Binding HasError}">
+        <TextBlock Text="{Binding ErrorMessage}" Classes="arc-caption" TextWrapping="Wrap" />
+      </Border>
+    </StackPanel>
+
+    <!-- Sessions of the selected workspace + its archived bucket -->
+    <ScrollViewer x:Name="SessionScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,2,16,18">
+      <StackPanel Spacing="8">
+
+        <ItemsControl ItemsSource="{Binding SelectedWorkspaceGroup.Sessions}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <!-- Arc's swipe row owns the horizontal gesture: presses are observed in the tunnel
+                   phase, so the row Button inside Content still receives taps, while a horizontal
+                   drag captures the pointer and reveals the trailing archive action. The component
+                   never paints hidden actions (|offset| <= 0.5), so no danger fill can leak through
+                   the card's antialiased rounded edge. -->
+              <media:ArcSwipeActions Margin="0,0,0,8"
+                                     Label="{Binding Title}"
+                                     Trailing="{Binding SwipeActions}"
+                                     FullSwipe="False"
+                                     Background="{DynamicResource ArcSurface}"
+                                     BorderBrush="{DynamicResource ArcBorderSubtle}"
+                                     BorderThickness="1"
+                                     CornerRadius="18"
+                                     Padding="14">
+                <Button Classes="session-row"
+                        Command="{Binding OpenCommand}"
+                        CommandParameter="{Binding}">
+                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
+                    <TextBlock Text="{Binding Title}"
+                               Classes="arc-body"
+                               FontWeight="Medium"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"
+                               VerticalAlignment="Center" />
+                    <acc:ArcBadge Grid.Column="1"
+                                  Content="运行中"
+                                  Tone="Success"
+                                  Dot="True"
+                                  IsVisible="{Binding Running}"
+                                  Margin="8,0,0,0" />
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding CwdText}"
+                               Classes="arc-caption"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="1"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                      <TextBlock Classes="arc-caption session-model"
+                                 Text="{Binding ModelText}"
+                                 IsVisible="{Binding $parent[UserControl].DataContext.ShowSessionModel}" />
+                      <TextBlock Text="{Binding UpdatedText}" Classes="arc-caption" />
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </media:ArcSwipeActions>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Archived sessions of this workspace (collapsed by default) -->
+        <StackPanel Spacing="6" IsVisible="{Binding HasSelectedWorkspaceArchived}">
+          <Button Classes="tool-toggle" Command="{Binding ToggleArchivedCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{Binding ArchivedChevron}" Classes="arc-caption" />
+              <TextBlock Text="{Binding ArchivedHeaderText}" Classes="arc-label" />
+            </StackPanel>
+          </Button>
+          <ItemsControl ItemsSource="{Binding SelectedWorkspaceArchivedSessions}" IsVisible="{Binding IsArchivedExpanded}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="row-card" Margin="0,0,0,8">
+                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
+                    <TextBlock Text="{Binding Title}"
+                               Classes="arc-body"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1" />
+                    <acc:ArcButton Grid.Column="1"
+                                   Content="恢复"
+                                   Variant="Secondary"
+                                   Size="Sm"
+                                   Command="{Binding $parent[UserControl].DataContext.UnarchiveSessionCommand}"
+                                   CommandParameter="{Binding}" />
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding CwdText}"
+                               Classes="arc-caption"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1" />
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="1"
+                               Text="{Binding UpdatedText}"
+                               Classes="arc-caption"
+                               HorizontalAlignment="Right" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Empty state -->
+    <StackPanel Grid.Row="2"
+                IsVisible="{Binding IsSessionsEmpty}"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center"
+                Spacing="10"
+                Margin="24">
+      <TextBlock Text="这个工作区还没有会话"
+                 Classes="arc-body"
+                 HorizontalAlignment="Center" />
+      <TextBlock Text="点「＋ 新建会话」，或切换到其他工作区。"
+                 Classes="arc-caption"
+                 TextWrapping="Wrap"
+                 TextAlignment="Center"
+                 MaxWidth="320"
+                 HorizontalAlignment="Center" />
+      <acc:ArcButton Content="刷新"
+                     Variant="Secondary"
+                     Size="Sm"
+                     HorizontalAlignment="Center"
+                     Command="{Binding RefreshSessionsCommand}" />
+    </StackPanel>
+  </Grid>
+</UserControl>

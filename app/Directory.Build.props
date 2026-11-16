@@ -1,0 +1,19 @@
+<Project>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!--
+      This machine keeps a usable Android SDK (API 36) outside the default location.
+      Override per machine with DSHREMOTE_ANDROID_SDK / AndroidSdkDirectory or by passing
+      -p:AndroidSdkDirectory=... ; build-apk.ps1 does that too.
+    -->
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == '' and '$(DSHREMOTE_ANDROID_SDK)' != ''">$(DSHREMOTE_ANDROID_SDK)</AndroidSdkDirectory>
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == ''">D:\SmartBillAndroidSdk</AndroidSdkDirectory>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' and Exists('C:\Program Files\Java\jdk-21')">C:\Program Files\Java\jdk-21</JavaSdkDirectory>
+  </PropertyGroup>
+
+</Project>

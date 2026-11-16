@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DshRemote.Smoke</RootNamespace>
+    <AssemblyName>DshRemote.Smoke</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DshRemote.Core\DshRemote.Core.csproj" />
+  </ItemGroup>
+
+</Project>

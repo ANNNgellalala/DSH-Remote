@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Avalonia's build-services stats task writes telemetry to
+    %LOCALAPPDATA%\AvaloniaUI\BuildServices\buildtasks.log. The DSH file sandbox denies that path,
+    so a confined `dotnet build` of the App fails at AvaloniaStatsTask even though compilation is fine.
+    The package props set UsedAvaloniaProducts after Directory.Build.props is read, so clear it here in
+    targets, exactly like the sibling Arc.Avalonia checkout does.
+  -->
+  <PropertyGroup>
+    <UsedAvaloniaProducts></UsedAvaloniaProducts>
+  </PropertyGroup>
+</Project>

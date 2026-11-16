@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+  <uses-permission android:name="android.permission.INTERNET" />
+
+  <!-- M3: keep the connection alive while the UI is backgrounded (dataSync foreground service) and show
+       approval/question/turn-finished alerts. POST_NOTIFICATIONS is a runtime permission on Android 13+;
+       MainActivity requests it. FOREGROUND_SERVICE_DATA_SYNC is required on Android 14+. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+  <!-- M6: QR scanning. ACTION_IMAGE_CAPTURE itself does not require CAMERA (the camera app holds it), but it is
+       declared for OEM/compatibility and requested at runtime only when the direct-capture fallback runs. -->
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+  <application android:label="DSH Remote" android:allowBackup="false">
+    <!-- M6: hands the camera app a writable cache URI for the QR capture (provider_paths.xml).
+         ${applicationId} keeps the authority unique when a debug/test variant reuses the sources. -->
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+      <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/provider_paths" />
+    </provider>
+  </application>
+</manifest>

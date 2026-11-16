@@ -1,0 +1,12 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:arc="using:Arc.Avalonia.Theme"
+             x:Class="DshRemote.App.App"
+             RequestedThemeVariant="Dark">
+
+  <Application.Styles>
+    <arc:ArcTheme />
+    <StyleInclude Source="avares://DshRemote.App/Theme/AppStyles.axaml" />
+  </Application.Styles>
+
+</Application>

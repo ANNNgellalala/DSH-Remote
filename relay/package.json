@@ -1,0 +1,45 @@
+{
+  "name": "dsh-remote-relay",
+  "version": "0.7.1",
+  "private": true,
+  "description": "DSH host plugin: expose the official Remote protocol to phones over LAN TLS or an outbound public gateway, self-check protocol compatibility, and publish pairing info.",
+  "type": "module",
+  "main": "src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./dsh": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "node --test --test-isolation=none test/config.test.mjs test/downloads.test.mjs test/download-page.test.mjs test/acl-guard.test.mjs test/acl-api.test.mjs test/auto-approve.test.mjs test/session-summary.test.mjs test/readiness.test.mjs test/self-check.test.mjs",
+    "smoke:acl": "node test/acl-guard.smoke.mjs",
+    "check": "node --check src/index.mjs && node --check src/config.mjs && node --check src/proxy.mjs && node --check src/pair-page.mjs && node --check src/gateway.mjs && node --check src/acl-guard.mjs && node --check src/auto-approve.mjs && node --check src/download-page.mjs && node --check src/session-summary.mjs && node --check src/readiness.mjs"
+  },
+  "files": [
+    "package.json",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "src/**/*.mjs",
+    "assets/**/*"
+  ],
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": ">=0.2.2-rc.1"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "remote",
+    "relay",
+    "tls",
+    "gateway"
+  ],
+  "dsh": {
+    "plugin": true,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

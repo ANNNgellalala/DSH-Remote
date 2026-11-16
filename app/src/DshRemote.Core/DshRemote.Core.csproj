@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DshRemote.Core</RootNamespace>
+    <AssemblyName>DshRemote.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Unit tests exercise the internal wire helpers and the connection state machine seams. -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>DshRemote.Core.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

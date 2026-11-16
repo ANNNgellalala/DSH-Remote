@@ -1,0 +1,52 @@
+# dsh-remote-relay bundle patch.
+#
+# Installed as a DSH bundle (`package.json` `dsh.bundle.patch`), so the DSH
+# plugin page can see it. Defaults intentionally stay empty: host defaults to
+# the LAN IPv4 of the default route, port 8443, TLS material under
+# ~/.dsh/remote/certs.
+#
+# Public relay server (gateway) configuration is NOT part of this patch any
+# more. It lives in the persisted document
+#
+#   ~/.dsh/remote/relay-config.json
+#
+# and is edited through the loopback management page
+# (https://127.0.0.1:8443/__relay/pair -> 中继服务器设置: IP/域名 + 端口 +
+# 可选的 API 路由端点), `POST /__relay/config`, or
+# `pwsh -File scripts/relay-config.ps1`. A reload tick (or a DSH restart) is
+# not required: the relay persists the file and reconnects immediately.
+#
+#     {
+#       "version": 1,
+#       "updatedAt": "2026-11-10T13:00:00.000Z",
+#       "gateway": {
+#         "enabled": true,
+#         "host": "203.0.113.10",
+#         "port": 9443,
+#         "path": "/__gateway/tunnel",
+#         "secure": true,
+#         "fingerprint": "<gateway SPKI sha256 hex, optional>"
+#       }
+#     }
+#
+# The old id-targeted override is still honoured as a fallback (so an existing
+# install keeps working) and is migrated once into the JSON document when that
+# document does not exist yet:
+#
+#   - id: remote-relay
+#     config:
+#       host: 192.0.2.10
+#       port: 8443
+#       name: My Desktop
+#       gateway:
+#         enabled: true
+#         host: 203.0.113.10
+#         port: 9443
+#         path: /__gateway/tunnel
+#         fingerprint: <gateway SPKI sha256 hex>
+#       tls:
+#         certFile: C:\Users\me\.dsh\remote\certs\relay-cert.pem
+#         keyFile:  C:\Users\me\.dsh\remote\certs\relay-key.pem
+- insert:
+    - id: remote-relay
+      name: 'dsh-remote-relay'

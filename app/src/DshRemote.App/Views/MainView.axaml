@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:DshRemote.App.Views"
+             x:Class="DshRemote.App.Views.MainView">
+  <Grid x:Name="RootGrid" RowDefinitions="Auto,*" Background="{DynamicResource ArcBackground}">
+
+    <!-- Slim connection strip, visible on the session/chat pages. -->
+    <Border Grid.Row="0"
+            Classes="header-bar"
+            Padding="14,6"
+            IsVisible="{Binding ShowConnectionBar}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <Border Classes="status-dot"
+                Classes.connected="{Binding IsConnected}"
+                Classes.connecting="{Binding IsConnectingOrReconnecting}" />
+        <TextBlock Grid.Column="1"
+                   Text="{Binding StatusText}"
+                   Classes="arc-caption"
+                   VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2"
+                   Text="{Binding StatusDetail}"
+                   Classes="arc-caption"
+                   IsVisible="{Binding HasStatusDetail}"
+                   TextTrimming="CharacterEllipsis"
+                   MaxWidth="320"
+                   VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <views:ConnectView IsVisible="{Binding IsConnectPage}" />
+      <views:SessionsView IsVisible="{Binding IsSessionsPage}" />
+      <views:DesktopsView IsVisible="{Binding IsDesktopsPage}" />
+      <views:SettingsView IsVisible="{Binding IsSettingsPage}" />
+
+      <!-- The chat view's own DataContext is the SessionViewModel, so the page switch is resolved on the
+           ContentControl (which keeps the MainViewModel DataContext) instead of on the view itself. -->
+      <ContentControl IsVisible="{Binding IsChatPage}" Content="{Binding CurrentSession}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate>
+            <views:ChatView />
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+    </Grid>
+  </Grid>
+</UserControl>

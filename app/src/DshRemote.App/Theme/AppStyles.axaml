@@ -1,0 +1,499 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="using:Arc.Avalonia.Markdown">
+
+  <!--
+    App-level chrome on top of ArcTheme. All colours/radii come from Arc design tokens
+    (DynamicResource) so the app follows the Arc dark palette + Violet accent applied in App.axaml.cs.
+  -->
+
+  <Styles.Resources>
+    <ResourceDictionary>
+      <!--
+        The Arc Markdown view ships as a scroll host (its own ScrollViewer) and, since the PuraMarkdown 0.2
+        refactor, hosts a PuraMarkdown.UI engine view inside PART_Host. Inside the transcript it must grow
+        with the outer chat scroll viewer instead of scrolling itself, so re-template it as a thin stacking
+        host: the view code only requires the PART_Host panel (PART_Scroll is optional) and puts exactly one
+        child there (the engine view). Leaving PART_Scroll absent keeps a single vertical scroller for the
+        whole transcript.
+
+        PART_Host stays a StackPanel (the panel type the upstream Arc theme uses): harmless with one child,
+        and it keeps the host's sizing semantics identical to Arc's default template. The old blank-line block
+        splitting workaround is no longer needed: the engine renders one control per top-level Markdown block
+        into its own stacking host, so blocks cannot overlap.
+      -->
+      <ControlTheme x:Key="{x:Type md:ArcMarkdownView}" TargetType="md:ArcMarkdownView">
+        <Setter Property="FontFamily" Value="{DynamicResource ArcFontBody}" />
+        <Setter Property="Foreground" Value="{DynamicResource ArcForeground}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <StackPanel x:Name="PART_Host" Spacing="0" Background="{TemplateBinding Background}" />
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- Cards / surfaces -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <Style Selector="Border.row-card">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="14" />
+  </Style>
+
+  <!-- Workspace picker in the session-list header (compact, borderless till hover) -->
+  <Style Selector="ComboBox.workspace-picker">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="FontSize" Value="{DynamicResource ArcTextLg}" />
+    <Setter Property="Foreground" Value="{DynamicResource ArcForeground}" />
+  </Style>
+
+  <Style Selector="ComboBox.workspace-picker:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+  </Style>
+
+  <Style Selector="ComboBox.workspace-picker /template/ Border#Background">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <!-- Desktop-management profile card -->
+  <Style Selector="Border.profile-card">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="14" />
+  </Style>
+
+  <Style Selector="Border.profile-card.active">
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcAccent}" />
+    <Setter Property="Background" Value="{DynamicResource ArcAccentSubtle}" />
+  </Style>
+
+  <!-- Session row content: a transparent full-size button so the whole card is tappable.
+       The surrounding ArcSwipeActions owns the horizontal gesture (tap still reaches this button). -->
+  <Style Selector="Button.session-row">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.row">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,10" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <!-- Transcript bubbles -->
+  <Style Selector="Border.bubble">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="MaxWidth" Value="560" />
+  </Style>
+
+  <Style Selector="Border.bubble.user">
+    <Setter Property="Background" Value="{DynamicResource ArcAccentSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcAccent}" />
+  </Style>
+
+  <Style Selector="Border.bubble.tool">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+  </Style>
+
+  <Style Selector="Border.bubble.system">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MaxWidth" Value="620" />
+  </Style>
+
+  <Style Selector="Border.bubble.error">
+    <Setter Property="Background" Value="{DynamicResource ArcDangerSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcDanger}" />
+  </Style>
+
+  <Style Selector="Border.detail">
+    <Setter Property="Background" Value="{DynamicResource ArcBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+
+  <!-- Connection status dot -->
+  <Style Selector="Border.status-dot">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Height" Value="9" />
+    <Setter Property="CornerRadius" Value="9999" />
+    <Setter Property="Background" Value="{DynamicResource ArcTextMuted}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Border.status-dot.connected">
+    <Setter Property="Background" Value="{DynamicResource ArcSuccess}" />
+  </Style>
+
+  <Style Selector="Border.status-dot.connecting">
+    <Setter Property="Background" Value="{DynamicResource ArcWarning}" />
+  </Style>
+
+  <Style Selector="Border.status-dot.disconnected">
+    <Setter Property="Background" Value="{DynamicResource ArcTextMuted}" />
+  </Style>
+
+  <!-- Workspace picker row marker: that workspace has at least one session running (idle workspaces show
+       no dot at all, so the picker layout is unchanged when nothing is active). -->
+  <Style Selector="Border.running-dot">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Height" Value="8" />
+    <Setter Property="CornerRadius" Value="9999" />
+    <Setter Property="Background" Value="{DynamicResource ArcSuccess}" />
+    <Setter Property="Margin" Value="8,0,0,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- Error banner text -->
+  <Style Selector="TextBlock.danger">
+    <Setter Property="Foreground" Value="{DynamicResource ArcDanger}" />
+  </Style>
+
+  <!-- System/timeline rows inside the transcript stay quiet -->
+  <Style Selector="SelectableTextBlock.timeline-text">
+    <Setter Property="FontSize" Value="{DynamicResource ArcTextXs}" />
+    <Setter Property="Foreground" Value="{DynamicResource ArcTextMuted}" />
+  </Style>
+
+  <Style Selector="Border.error-banner">
+    <Setter Property="Background" Value="{DynamicResource ArcDangerSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcDanger}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="12,9" />
+  </Style>
+
+  <!-- Page header bar -->
+  <Style Selector="Border.header-bar">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="14,10" />
+  </Style>
+
+  <!-- Chat header: model + reasoning-effort chip (tap opens the cascading picker). -->
+  <Style Selector="Border.model-chip">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9999" />
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="MaxWidth" Value="190" />
+  </Style>
+
+  <Style Selector="Border.model-chip:disabled">
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+
+  <Style Selector="TextBlock.model-chip-title">
+    <Setter Property="FontSize" Value="{DynamicResource ArcTextXs}" />
+    <Setter Property="Foreground" Value="{DynamicResource ArcTextSecondary}" />
+  </Style>
+
+  <Style Selector="TextBlock.model-chip-sub">
+    <Setter Property="FontSize" Value="{DynamicResource ArcTextXs}" />
+    <Setter Property="Foreground" Value="{DynamicResource ArcTextMuted}" />
+  </Style>
+
+  <!-- Cascading model picker menu (hosted in a Popup anchored to the chip). -->
+  <Style Selector="Border.model-menu">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="MinWidth" Value="244" />
+    <Setter Property="MaxWidth" Value="340" />
+  </Style>
+
+  <Style Selector="Button.model-row">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <Style Selector="Button.model-row:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+  </Style>
+
+  <Style Selector="TextBlock.model-check">
+    <Setter Property="Foreground" Value="{DynamicResource ArcAccent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+
+  <!-- Assistant bubbles can be wider: Markdown tables/code need the room. -->
+  <Style Selector="Border.bubble.assistant">
+    <Setter Property="MaxWidth" Value="760" />
+  </Style>
+
+  <!-- Reasoning ("thinking") block -->
+  <Style Selector="Border.reasoning">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="Margin" Value="0,0,0,4" />
+  </Style>
+
+  <Style Selector="Button.reasoning-header">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <!-- Context compaction card (DSH summary compaction; anchored at the checkpoint event).
+       The outer bubble uses a dedicated holder class so it never also matches Border.compaction. -->
+  <Style Selector="Border.bubble.compaction-holder">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MaxWidth" Value="760" />
+  </Style>
+
+  <Style Selector="Border.compaction">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="Margin" Value="0,2,0,2" />
+  </Style>
+
+  <Style Selector="Button.compaction-header">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Border.compaction-body">
+    <Setter Property="Background" Value="{DynamicResource ArcBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <!-- Tool card sections (arguments / result) -->
+  <Style Selector="Border.tool-section">
+    <Setter Property="Background" Value="{DynamicResource ArcBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <Style Selector="Button.tool-toggle">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+  </Style>
+
+  <Style Selector="Border.tool-error">
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcDanger}" />
+  </Style>
+
+  <!-- Queue panel / items -->
+  <Style Selector="Border.queue-panel">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="Margin" Value="0,8,0,0" />
+  </Style>
+
+  <Style Selector="Border.queue-item">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="9,7" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+
+  <!-- Approval tray -->
+  <Style Selector="Border.approval-card">
+    <Setter Property="Background" Value="{DynamicResource ArcWarningSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcWarning}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+
+  <Style Selector="Border.approval-args">
+    <Setter Property="Background" Value="{DynamicResource ArcBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="Margin" Value="0,6,0,0" />
+    <Setter Property="MaxHeight" Value="150" />
+  </Style>
+
+  <!-- Question card -->
+  <Style Selector="Border.question-card">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcAccent}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+
+  <Style Selector="Border.question-item">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+
+  <!-- Transient in-app notice -->
+  <Style Selector="Border.notice-bar">
+    <Setter Property="Background" Value="{DynamicResource ArcAccentSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcAccent}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+
+  <!-- Compact status pill -->
+  <Style Selector="Border.pill">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.pill">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="9,3" />
+    <Setter Property="FontSize" Value="{DynamicResource ArcTextXs}" />
+    <Setter Property="Foreground" Value="{DynamicResource ArcTextSecondary}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+
+  <!-- Virtualized session list: the ListBox supplies the scrolling/virtualization, rows keep the card look. -->
+  <Style Selector="ListBox.session-list">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <Style Selector="ListBox.session-list ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,10" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <Style Selector="ListBox.session-list ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="ListBox.session-list ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="ListBox.session-list ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="ListBox.session-list.narrow TextBlock.session-model">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+
+  <Style Selector="Border.pill.warning">
+    <Setter Property="Background" Value="{DynamicResource ArcWarningSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcWarning}" />
+  </Style>
+
+  <!-- Turn file card: files produced (present) or modified (edit/write/apply_patch) by one agent turn. -->
+  <Style Selector="Border.file-card">
+    <Setter Property="Background" Value="{DynamicResource ArcSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
+
+  <Style Selector="Border.file-row">
+    <Setter Property="Padding" Value="0,3" />
+  </Style>
+
+  <Style Selector="Border.file-badge">
+    <Setter Property="Background" Value="{DynamicResource ArcSurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcBorderSubtle}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="0,1,0,0" />
+  </Style>
+
+  <Style Selector="Border.file-badge.produced">
+    <Setter Property="Background" Value="{DynamicResource ArcAccentSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ArcAccent}" />
+  </Style>
+
+</Styles>

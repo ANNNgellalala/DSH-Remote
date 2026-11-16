@@ -1,0 +1,37 @@
+{
+  "name": "dsh-remote-gateway",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Public TLS gateway for DSH Remote: routes /connect and /api/* to the right desktop DSH by token/cookie, bridges WebSockets to desktop relay connectors, and serves a category-ID resource centre (dsh-remote/smartbill/relay/docs) with a JSON index, per-upload keepVersions retention and token-authenticated upload/delete.",
+  "type": "module",
+  "main": "gateway.mjs",
+  "files": [
+    "package.json",
+    "gateway.mjs",
+    "proto.mjs",
+    "config.mjs",
+    "identity.mjs",
+    "downloads.mjs",
+    "download-page.mjs",
+    "compress.mjs",
+    "resources.mjs",
+    "resources-http.mjs",
+    "README.zh.md"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node gateway.mjs",
+    "check": "node --check gateway.mjs && node --check proto.mjs && node --check config.mjs && node --check identity.mjs && node --check downloads.mjs && node --check download-page.mjs && node --check compress.mjs && node --check resources.mjs && node --check resources-http.mjs",
+    "test": "node --test --test-isolation=none test/resources.test.mjs test/download-page.test.mjs test/resources-http.test.mjs test/gzip.test.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-remote",
+    "gateway",
+    "tls",
+    "tunnel",
+    "resources"
+  ]
+}

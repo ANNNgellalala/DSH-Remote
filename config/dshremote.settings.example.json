@@ -1,0 +1,19 @@
+{
+  "deploy": {
+    "sshHost": "203.0.113.10",
+    "sshPort": 22,
+    "sshUser": "root",
+    "keyFile": "~/.ssh/id_ed25519",
+    "publicHost": "203.0.113.10",
+    "publicPort": 9443,
+    "extraSan": []
+  },
+  "network": {
+    "lanIp": ""
+  },
+  "tools": {
+    "openSslPath": "",
+    "androidSdkDirectory": "",
+    "javaSdkDirectory": ""
+  }
+}

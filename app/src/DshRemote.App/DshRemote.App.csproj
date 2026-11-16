@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DshRemote.App</RootNamespace>
+    <AssemblyName>DshRemote.App</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keep Avalonia on the same patch as the Arc.Avalonia checkout: Arc requires >= 12.1.5,
+         and a lower direct pin is a NU1605 package downgrade error. -->
+    <PackageReference Include="Avalonia" Version="12.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Unit tests exercise retry-budget seams without waiting real 5 s intervals; the desktop probes drive
+         the same Markdown queue/quiescence helpers as production. -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>DshRemote.App.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>LinkProbe</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+        <ProjectReference Include="..\..\..\..\Arc.Avalonia\src\Meta\Arc.Avalonia.Meta\Arc.Avalonia.Meta.csproj" />
+    <ProjectReference Include="..\DshRemote.Core\DshRemote.Core.csproj" />
+  </ItemGroup>
+
+</Project>
+

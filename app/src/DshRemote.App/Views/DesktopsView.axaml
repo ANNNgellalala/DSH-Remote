@@ -1,0 +1,146 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:acc="using:Arc.Avalonia.Controls"
+             x:Class="DshRemote.App.Views.DesktopsView">
+  <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource ArcBackground}">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Classes="header-bar">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <acc:ArcButton Content="‹"
+                       Command="{Binding CloseDesktopsCommand}"
+                       Variant="Ghost"
+                       Size="Sm"
+                       Compact="True"
+                       VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Spacing="2">
+          <TextBlock Text="桌面管理" Classes="arc-heading" />
+          <TextBlock Text="{Binding Profiles.ProfilesSummary}" Classes="arc-caption" />
+        </StackPanel>
+        <acc:ArcButton Grid.Column="2"
+                       Content="刷新"
+                       Variant="Ghost"
+                       Size="Sm"
+                       Command="{Binding Profiles.RefreshCommand}" />
+      </Grid>
+    </Border>
+
+    <!-- Feedback + add desktop -->
+    <StackPanel Grid.Row="1" Margin="16,12,16,6" Spacing="10">
+      <Border Classes="error-banner" IsVisible="{Binding Profiles.HasError}">
+        <TextBlock Text="{Binding Profiles.Message}" Classes="arc-caption" TextWrapping="Wrap" />
+      </Border>
+      <Border Classes="notice-bar" IsVisible="{Binding Profiles.HasMessage}">
+        <TextBlock Text="{Binding Profiles.Message}" Classes="arc-caption" TextWrapping="Wrap"
+                   IsVisible="{Binding !Profiles.HasError}" />
+      </Border>
+
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="8">
+          <TextBlock Text="添加桌面" Classes="arc-label" />
+          <TextBlock Text="粘贴 dshremote://pair?... 配对 URI，或扫码 / 从 pairing.json 载入。"
+                     Classes="arc-caption"
+                     TextWrapping="Wrap" />
+          <TextBox Text="{Binding Profiles.PairingInput, Mode=TwoWay}"
+                   PlaceholderText="dshremote://pair?v=1&amp;host=192.0.2.20&amp;port=8443&amp;token=…"
+                   TextWrapping="Wrap"
+                   MinHeight="52"
+                   AcceptsReturn="False" />
+          <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+            <acc:ArcButton Content="扫码"
+                           Variant="Secondary"
+                           Size="Sm"
+                           Command="{Binding Profiles.ScanQrCommand}" />
+            <acc:ArcButton Content="从文件加载"
+                           Variant="Ghost"
+                           Size="Sm"
+                           Command="{Binding Profiles.LoadFromFileAndAddCommand}" />
+            <acc:ArcButton Content="添加并连接"
+                           Variant="Primary"
+                           Size="Sm"
+                           Command="{Binding Profiles.AddAndConnectCommand}"
+                           IsEnabled="{Binding !Profiles.IsBusy}" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+
+    <!-- Saved desktops -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,2,16,18">
+      <StackPanel Spacing="8">
+        <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Classes="profile-card" Classes.active="{Binding IsActive}" Margin="0,0,0,8">
+                <StackPanel Spacing="6">
+
+                  <!-- View row -->
+                  <StackPanel Spacing="6" IsVisible="{Binding ShowRow}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBlock Text="{Binding DisplayName}"
+                                 Classes="arc-body"
+                                 FontWeight="Medium"
+                                 TextTrimming="CharacterEllipsis"
+                                 MaxLines="1"
+                                 VerticalAlignment="Center" />
+                      <acc:ArcBadge Grid.Column="1" Content="当前" Tone="Accent" Dot="True"
+                                    IsVisible="{Binding IsActive}" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding AddressText}" Classes="arc-caption arc-mono" />
+                      <acc:ArcBadge Content="{Binding ModeText}" Tone="Neutral" />
+                      <TextBlock Text="{Binding TokenMasked}" Classes="arc-caption arc-mono" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding LastStatusText}" Classes="arc-caption" />
+                        <TextBlock Text="{Binding LastConnectedText}" Classes="arc-caption" />
+                      </StackPanel>
+                      <WrapPanel Grid.Column="1" Orientation="Horizontal" ItemSpacing="6" LineSpacing="6">
+                        <acc:ArcButton Content="连接"
+                                       Variant="Primary"
+                                       Size="Sm"
+                                       Command="{Binding ConnectCommand}"
+                                       IsVisible="{Binding !IsActive}" />
+                        <acc:ArcButton Content="重命名"
+                                       Variant="Ghost"
+                                       Size="Sm"
+                                       Command="{Binding BeginRenameCommand}" />
+                        <acc:ArcButton Content="删除"
+                                       Variant="Ghost"
+                                       Size="Sm"
+                                       Command="{Binding DeleteCommand}" />
+                      </WrapPanel>
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- Rename row -->
+                  <StackPanel Spacing="6" IsVisible="{Binding IsEditing}">
+                    <TextBlock Text="重命名桌面" Classes="arc-caption" />
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                      <TextBox Text="{Binding EditingName, Mode=TwoWay}" MinHeight="38" />
+                      <acc:ArcButton Grid.Column="1" Content="保存" Variant="Primary" Size="Sm"
+                                     Command="{Binding SaveNameCommand}" />
+                      <acc:ArcButton Grid.Column="2" Content="取消" Variant="Ghost" Size="Sm"
+                                     Command="{Binding CancelRenameCommand}" />
+                    </Grid>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel IsVisible="{Binding !Profiles.HasProfiles}" Spacing="6" Margin="0,30,0,0">
+          <TextBlock Text="还没有保存的桌面" Classes="arc-body" HorizontalAlignment="Center" />
+          <TextBlock Text="在上面粘贴配对 URI，或从 pairing.json 载入。"
+                     Classes="arc-caption"
+                     TextWrapping="Wrap"
+                     TextAlignment="Center"
+                     HorizontalAlignment="Center"
+                     MaxWidth="320" />
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

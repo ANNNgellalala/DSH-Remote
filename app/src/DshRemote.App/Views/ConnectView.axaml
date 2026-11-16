@@ -1,0 +1,161 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:acc="using:Arc.Avalonia.Controls"
+             x:Class="DshRemote.App.Views.ConnectView">
+  <ScrollViewer>
+    <StackPanel MaxWidth="560"
+                HorizontalAlignment="Center"
+                Margin="18,26,18,24"
+                Spacing="14">
+
+      <StackPanel Spacing="4">
+        <TextBlock Text="DSH Remote" Classes="arc-subtitle" />
+        <TextBlock Text="连接到桌面 DSH: 查看会话历史与实时输出、继续对话、停止本轮运行。"
+                   Classes="arc-caption"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <!-- Saved desktops entry point -->
+      <Border Classes="card" Padding="12">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{Binding Profiles.ActiveProfileName}" Classes="arc-label" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding Profiles.ActiveProfileAddress}"
+                         Classes="arc-caption arc-mono"
+                         IsVisible="{Binding Profiles.HasActiveAddress}" />
+              <acc:ArcBadge Content="{Binding Profiles.ActiveProfileMode}"
+                            Tone="Neutral"
+                            IsVisible="{Binding Profiles.HasActiveMode}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Profiles.ActiveProfileTokenMasked}" Classes="arc-caption arc-mono" />
+          </StackPanel>
+          <acc:ArcButton Grid.Column="1"
+                         Content="桌面管理"
+                         Variant="Secondary"
+                         Size="Sm"
+                         Command="{Binding OpenDesktopsCommand}"
+                         VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+
+      <!-- Pairing form -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+
+          <TextBlock Text="配对 URI" Classes="arc-label" />
+          <TextBox Text="{Binding Settings.PairingUri, Mode=TwoWay}"
+                   PlaceholderText="dshremote://pair?v=1&amp;host=192.0.2.20&amp;port=8443&amp;token=…&amp;fp=…"
+                   TextWrapping="Wrap"
+                   MinHeight="64"
+                   AcceptsReturn="False" />
+          <TextBlock Text="{Binding PairingPreviewText}"
+                     Classes="arc-caption"
+                     IsVisible="{Binding HasPairingPreview}"
+                     TextWrapping="Wrap" />
+
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <acc:ArcButton Content="从文件加载配对"
+                           Variant="Secondary"
+                           Size="Sm"
+                           Command="{Binding LoadPairingFromFileCommand}"
+                           IsVisible="{Binding CanLoadPairingFile}" />
+            <TextBlock Grid.Column="1"
+                       Text="Android: /sdcard/Android/data/dev.dshremote.app/files/pairing.json"
+                       Classes="arc-caption"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center" />
+          </Grid>
+
+          <Grid ColumnDefinitions="*,*,*" ColumnSpacing="1" Margin="0,6,0,2">
+            <Border Height="1" Background="{DynamicResource ArcBorderSubtle}" VerticalAlignment="Center" />
+            <Border Grid.Column="1" Height="1" Background="{DynamicResource ArcBorderSubtle}" VerticalAlignment="Center" />
+            <Border Grid.Column="2" Height="1" Background="{DynamicResource ArcBorderSubtle}" VerticalAlignment="Center" />
+          </Grid>
+
+          <TextBlock Text="或手动填写" Classes="arc-caption" />
+
+          <Grid ColumnDefinitions="*,96" ColumnSpacing="8">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Host / IP" Classes="arc-caption" />
+              <TextBox Text="{Binding Settings.Host, Mode=TwoWay}" PlaceholderText="192.0.2.20" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="4">
+              <TextBlock Text="Port" Classes="arc-caption" />
+              <TextBox Text="{Binding Settings.Port, Mode=TwoWay}" PlaceholderText="8443" />
+            </StackPanel>
+          </Grid>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Token" Classes="arc-caption" />
+            <TextBox Text="{Binding Settings.Token, Mode=TwoWay}" PlaceholderText="launch token" />
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="SPKI 指纹（可选，配对文件里通常已带）" Classes="arc-caption" />
+            <TextBox Text="{Binding Settings.SpkiSha256, Mode=TwoWay}" PlaceholderText="base64 / hex SHA-256" />
+          </StackPanel>
+
+          <TextBlock Text="{Binding Settings.PairedWithText}"
+                     Classes="arc-caption"
+                     IsVisible="{Binding Settings.HasDesktopName}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Connection state -->
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+        <Border Classes="status-dot"
+                Classes.connected="{Binding IsConnected}"
+                Classes.connecting="{Binding IsConnectingOrReconnecting}" />
+        <TextBlock Grid.Column="1"
+                   Text="{Binding StatusText}"
+                   Classes="arc-body-sm"
+                   VerticalAlignment="Center" />
+      </Grid>
+
+      <Border Classes="error-banner" IsVisible="{Binding HasError}">
+        <StackPanel Spacing="4">
+          <TextBlock Text="连接失败" Classes="arc-label danger" />
+          <TextBlock Text="{Binding ErrorMessage}" Classes="arc-caption" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <acc:ArcButton Content="{Binding ConnectButtonText}"
+                     Command="{Binding ConnectCommand}"
+                     IsEnabled="{Binding CanConnect}"
+                     Loading="{Binding IsConnecting}"
+                     Variant="Primary"
+                     Size="Lg"
+                     HorizontalAlignment="Stretch" />
+
+      <TextBlock Text="{Binding Settings.Status}"
+                 Classes="arc-caption"
+                 TextWrapping="Wrap"
+                 HorizontalAlignment="Center" />
+
+      <!-- Demo affordance: the built-in fake client keeps the UI testable before DshClient lands. -->
+      <StackPanel Spacing="6" Margin="0,10,0,0">
+        <TextBlock Text="没有配对信息？可以先用演示数据预览会话列表与聊天界面。"
+                   Classes="arc-caption"
+                   TextWrapping="Wrap"
+                   HorizontalAlignment="Center" />
+        <acc:ArcButton Content="查看演示会话（假数据）"
+                       Command="{Binding DemoPreviewCommand}"
+                       Variant="Ghost"
+                       Size="Sm"
+                       HorizontalAlignment="Center" />
+        <TextBlock Text="演示模式不会写入配对设置。"
+                   Classes="arc-caption"
+                   HorizontalAlignment="Center"
+                   IsVisible="{Binding IsDemoClient}" />
+      </StackPanel>
+
+      <acc:ArcButton Content="清除本机配对信息"
+                     Command="{Binding ForgetPairingCommand}"
+                     Variant="Ghost"
+                     Size="Sm"
+                     HorizontalAlignment="Center"
+                     Margin="0,6,0,0" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

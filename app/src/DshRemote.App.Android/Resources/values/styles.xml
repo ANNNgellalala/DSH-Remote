@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+  <!-- AvaloniaMainActivity derives from AppCompatActivity, so the host activity MUST use an
+       AppCompat theme; without it the process dies with
+       "java.lang.IllegalStateException: You need to use a Theme.AppCompat theme (or descendant)". -->
+  <style name="DshRemoteTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
+    <item name="android:windowActionBar">false</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowBackground">#FF101014</item>
+    <item name="android:statusBarColor">#FF101014</item>
+    <item name="android:navigationBarColor">#FF101014</item>
+  </style>
+
+  <!-- M6 in-app QR scanner: platform Material theme (no AppCompat dependency) with a full-screen dark UI
+       and a transparent action bar; the Activity draws its own controls programmatically. -->
+  <style name="QrScannerTheme" parent="@android:style/Theme.Material.NoActionBar">
+    <item name="android:windowActionBar">false</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowBackground">#FF000000</item>
+    <item name="android:statusBarColor">#FF000000</item>
+    <item name="android:navigationBarColor">#FF000000</item>
+    <item name="android:windowLightStatusBar">false</item>
+    <item name="android:colorAccent">#FF7C5CFF</item>
+  </style>
+</resources>

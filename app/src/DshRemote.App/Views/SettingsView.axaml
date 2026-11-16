@@ -1,0 +1,310 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:acc="using:Arc.Avalonia.Controls"
+             x:Class="DshRemote.App.Views.SettingsView">
+  <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource ArcBackground}">
+
+    <!-- Header: back to the page that opened settings -->
+    <Border Grid.Row="0" Classes="header-bar">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <acc:ArcButton Content="‹"
+                       Command="{Binding CloseSettingsCommand}"
+                       Variant="Ghost"
+                       Size="Sm"
+                       Compact="True"
+                       VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Spacing="2">
+          <TextBlock Text="设置" Classes="arc-heading" />
+          <TextBlock Text="交互偏好、桌面连接与版本信息" Classes="arc-caption" />
+        </StackPanel>
+        <Border Grid.Column="2"
+                Classes="status-dot"
+                Classes.connected="{Binding IsConnected}"
+                Classes.connecting="{Binding IsConnectingOrReconnecting}"
+                VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <!-- Errors raised while the page is open (e.g. a reconnect attempt failing) -->
+    <Border Grid.Row="1" Classes="error-banner" Margin="16,10,16,0" IsVisible="{Binding HasError}">
+      <TextBlock Text="{Binding ErrorMessage}" Classes="arc-caption" TextWrapping="Wrap" />
+    </Border>
+
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,10,16,18">
+      <StackPanel Spacing="12">
+
+        <!-- 交互 -->
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="交互" Classes="arc-label" />
+              <TextBlock Text="这些偏好立即生效，并保存在本机（重启后保留）。"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="2">
+                <TextBlock Text="输入时展开全屏" Classes="arc-body" />
+                <TextBlock Text="聚焦输入框时打开全屏编辑层，长文本与输入法弹起时仍可看到全部内容。"
+                           Classes="arc-caption"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <CheckBox Grid.Column="1"
+                        IsChecked="{Binding Settings.ExpandComposerFullscreen, Mode=TwoWay}"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="聚焦输入框时打开全屏编辑层，长文本与 IME 弹起时仍可看到全部内容。" />
+            </Grid>
+
+            <TextBlock Text="插话模式（steer）属于每次发送的模式，仍在会话输入框上方切换。"
+                       Classes="arc-caption"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <!-- 自动审批（桌面端值守）：规则存在桌面 relay，手机 App 关闭后仍然生效 -->
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="10">
+            <StackPanel Spacing="2">
+              <TextBlock Text="自动审批（桌面端值守）" Classes="arc-label" />
+              <TextBlock Text="规则保存在桌面 relay 上，手机 App 关闭后仍然生效；只会自动「允许一次」，提问始终需要人工回答。"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="2">
+                <TextBlock Text="启用桌面端自动审批" Classes="arc-body" />
+                <TextBlock Text="{Binding Settings.AutoApprove.SummaryText}"
+                           Classes="arc-caption"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <CheckBox Grid.Column="1"
+                        IsChecked="{Binding Settings.AutoApprove.Enabled, Mode=TwoWay}"
+                        IsEnabled="{Binding Settings.AutoApprove.CanEdit}"
+                        VerticalAlignment="Center" />
+            </Grid>
+
+            <StackPanel Spacing="6" IsVisible="{Binding Settings.AutoApprove.Enabled}">
+              <TextBlock Text="勾选范围：选中上级会选中全部下级，取消上级会取消全部下级。"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap" />
+              <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="2">
+                  <CheckBox IsChecked="{Binding Settings.AutoApprove.AllSelected, Mode=TwoWay}"
+                            IsThreeState="True"
+                            IsEnabled="{Binding Settings.AutoApprove.CanEdit}">
+                    <TextBlock Text="全部工作区" Classes="arc-body" />
+                  </CheckBox>
+
+                  <ItemsControl ItemsSource="{Binding Settings.AutoApprove.Workspaces}"
+                                Margin="14,0,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Spacing="2" Margin="0,2,0,2">
+                          <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                    IsThreeState="True">
+                            <StackPanel Spacing="1">
+                              <TextBlock Text="{Binding Title}" Classes="arc-body" TextWrapping="Wrap" />
+                              <TextBlock Text="{Binding PathText}"
+                                         Classes="arc-caption"
+                                         TextWrapping="Wrap"
+                                         IsVisible="{Binding HasPath}" />
+                            </StackPanel>
+                          </CheckBox>
+
+                          <ItemsControl ItemsSource="{Binding Sessions}"
+                                        Margin="22,0,0,0">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}">
+                                  <StackPanel Spacing="1">
+                                    <TextBlock Text="{Binding Title}" Classes="arc-body" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Meta}" Classes="arc-caption" TextWrapping="Wrap" />
+                                  </StackPanel>
+                                </CheckBox>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+              <TextBlock Text="桌面还没有已知工作区；打开一个会话后再回来设置。"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap"
+                         IsVisible="{Binding Settings.AutoApprove.IsEmpty}" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding Settings.AutoApprove.StatsText}"
+                       Classes="arc-caption"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Settings.AutoApprove.AuditText}"
+                       Classes="arc-caption arc-mono"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding Settings.AutoApprove.HasAudit}" />
+            <Border Classes="error-banner" IsVisible="{Binding Settings.AutoApprove.HasError}">
+              <TextBlock Text="{Binding Settings.AutoApprove.ErrorText}"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap" />
+            </Border>
+
+            <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+              <acc:ArcButton Content="刷新规则"
+                             Variant="Secondary"
+                             Size="Sm"
+                             Command="{Binding Settings.AutoApprove.RefreshCommand}" />
+              <TextBlock Text="{Binding Settings.AutoApprove.RelayVersionText}"
+                         Classes="arc-caption"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="处理中…"
+                         Classes="arc-caption"
+                         IsVisible="{Binding Settings.AutoApprove.IsBusy}"
+                         VerticalAlignment="Center" />
+            </WrapPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Windows 权限 -->
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="10">
+            <StackPanel Spacing="2">
+              <TextBlock Text="Windows 权限" Classes="arc-label" />
+              <TextBlock Text="保证桌面新会话能写入其工作区。体检只补充缺失的文件夹权限，不会删除任何权限。"
+                         Classes="arc-caption"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding Settings.AclStatusText}"
+                       Classes="arc-body"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Settings.AclDetailText}"
+                       Classes="arc-caption"
+                       IsVisible="{Binding Settings.HasAclDetail}"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Settings.AclCheckedText}"
+                       Classes="arc-caption" />
+
+            <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+              <acc:ArcButton Content="刷新状态"
+                             Variant="Secondary"
+                             Size="Sm"
+                             Command="{Binding Settings.RefreshAclCommand}" />
+              <acc:ArcButton Content="一键体检并修复"
+                             Variant="Primary"
+                             Size="Sm"
+                             Command="{Binding Settings.CheckAclCommand}" />
+              <TextBlock Text="处理中…"
+                         Classes="arc-caption"
+                         IsVisible="{Binding Settings.AclBusy}"
+                         VerticalAlignment="Center" />
+            </WrapPanel>
+
+            <TextBlock Text="{Binding Settings.AclResultText}"
+                       Classes="arc-caption"
+                       IsVisible="{Binding Settings.HasAclResult}"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <!-- 连接 -->
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="10">
+            <StackPanel Spacing="2">
+              <TextBlock Text="连接" Classes="arc-label" />
+              <TextBlock Text="当前配对的桌面与连接状态。" Classes="arc-caption" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+              <Border Classes="status-dot"
+                      Classes.connected="{Binding IsConnected}"
+                      Classes.connecting="{Binding IsConnectingOrReconnecting}"
+                      VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="{Binding StatusText}" Classes="arc-body" />
+                <TextBlock Text="{Binding Settings.PairedWithText}"
+                           Classes="arc-caption"
+                           IsVisible="{Binding Settings.HasDesktopName}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding StatusDetail}"
+                           Classes="arc-caption"
+                           IsVisible="{Binding HasStatusDetail}"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <acc:ArcBadge Grid.Column="2"
+                            Content="已连接"
+                            Tone="Success"
+                            Dot="True"
+                            IsVisible="{Binding IsConnected}"
+                            VerticalAlignment="Center" />
+            </Grid>
+
+            <TextBlock Text="{Binding Settings.Status}" Classes="arc-caption" TextWrapping="Wrap" />
+
+            <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+              <acc:ArcButton Content="桌面管理"
+                             Variant="Secondary"
+                             Size="Sm"
+                             Command="{Binding OpenDesktopsCommand}" />
+              <acc:ArcButton Content="重新连接"
+                             Variant="Primary"
+                             Size="Sm"
+                             Command="{Binding ConnectCommand}"
+                             IsEnabled="{Binding CanConnect}" />
+              <acc:ArcButton Content="断开连接"
+                             Variant="Danger"
+                             Size="Sm"
+                             Command="{Binding DisconnectCommand}"
+                             IsEnabled="{Binding CanDisconnect}" />
+            </WrapPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 诊断（1.6.2+）：崩溃/卡死时把这份日志发给开发者，可直接定位 -->
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="8">
+            <TextBlock Text="诊断" Classes="arc-label" />
+            <TextBlock Text="遇到卡死/闪退时，点下面的按钮复制诊断日志，或在电脑上执行 adb pull 取回文件。"
+                       Classes="arc-caption"
+                       TextWrapping="Wrap" />
+            <TextBlock x:Name="DiagnosticsPathText"
+                       Classes="arc-caption arc-mono"
+                       TextWrapping="Wrap" />
+            <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+              <acc:ArcButton Content="复制诊断日志"
+                             Variant="Secondary"
+                             Size="Sm"
+                             Click="OnCopyDiagnosticsClick" />
+              <acc:ArcButton Content="清空诊断日志"
+                             Variant="Ghost"
+                             Size="Sm"
+                             Click="OnClearDiagnosticsClick" />
+            </WrapPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 关于 -->
+        <Border Classes="card" Padding="14">
+          <StackPanel Spacing="8">
+            <TextBlock Text="关于" Classes="arc-label" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <TextBlock Text="产品" Classes="arc-caption" Width="48" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Settings.ProductName}" Classes="arc-body" />
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <TextBlock Text="版本" Classes="arc-caption" Width="48" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1"
+                         Text="{Binding Settings.VersionText}"
+                         Classes="arc-body arc-mono" />
+            </Grid>
+            <TextBlock Text="在手机上远程驱动桌面 DSH 会话：查看历史与实时输出、继续对话，并处理审批与插话。"
+                       Classes="arc-caption"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

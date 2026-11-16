@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Fallback test runner for environments where `dotnet test` (VSTest) cannot start: its testhost opens the
+    parent process handle to watch for runner exit, which can fail with Win32Exception 5 (access denied) when
+    the repo is driven from a confined/parent-managed shell. This runner executes xUnit v2 tests in-process
+    and prints the same pass/fail counts. It is not part of the solution and only built on demand by
+    scripts/run-tests.ps1. See docs/build-verification-vs2026.md.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>DshTestFallback</AssemblyName>
+    <RootNamespace>DshTestFallback</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.runner.utility" Version="2.9.2" />
+  </ItemGroup>
+
+</Project>
