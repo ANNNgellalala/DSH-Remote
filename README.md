@@ -927,3 +927,7 @@ pwsh -File scripts/upload-resource.ps1 -List
   资源中心现保留 **1.8.5-45 / 1.8.3-43 / 1.8.2-42**，按 `keepVersions=3` 清理了 1.8.1-41。
 - 标准发布命令：`pwsh -File scripts/release-apk.ps1 -DisplayVersion 1.8.5 -VersionCode 45`。
 
+## 许可证
+
+[MIT](LICENSE) © 2026 Feng
+
